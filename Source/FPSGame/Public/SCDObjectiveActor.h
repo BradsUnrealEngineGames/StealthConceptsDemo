@@ -19,6 +19,9 @@ public:
 	ASCDObjectiveActor();
 
 protected:
+	UPROPERTY(EditDefaultsOnly, Category = "Properties")
+	UParticleSystem* PickupFX;
+
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	UStaticMeshComponent* MeshComp;
 
@@ -28,8 +31,12 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	void PlayEffects();
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	virtual void NotifyActorBeginOverlap(AActor* OtherActor) override;
 
 };
