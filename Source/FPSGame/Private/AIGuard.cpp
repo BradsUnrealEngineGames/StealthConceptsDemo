@@ -7,12 +7,18 @@
 #include "TimerManager.h"
 #include "FPSGameMode.h"
 #include "Engine/World.h"
+#include "AINavigationVertex.h"
+#include "AIController.h"
+#include "Components/CapsuleComponent.h"
 
 // Sets default values
 AAIGuard::AAIGuard()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	GuardCollisionComponent = CreateDefaultSubobject<UCapsuleComponent>(FName("GuardCollisionComponent"));
+	GuardCollisionComponent->SetupAttachment(RootComponent);
 
 	PawnSensingComp = CreateDefaultSubobject<UPawnSensingComponent>(TEXT("PawnSensingComp"));
 
@@ -27,6 +33,8 @@ void AAIGuard::BeginPlay()
 {
 	Super::BeginPlay();
 	OriginalRotation = GetActorRotation();
+	CurrentPatrolPoint = FirstPatrolPoint;
+	GuardCollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &AAIGuard::ChangeCurrentPatrolPoint);
 }
 
 // Called every frame
@@ -34,6 +42,9 @@ void AAIGuard::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (GuardState == EAIState::Idle) {
+		MoveToNavVertex(CurrentPatrolPoint);
+	}
 }
 
 void AAIGuard::ResetOrientation()
@@ -57,6 +68,12 @@ void AAIGuard::OnPawnSeen(APawn* SeenPawn) {
 
 void AAIGuard::OnPawnHeard(APawn* HeardPawn, const FVector& Location, float Volume) {
 	if (GuardState == EAIState::Alerted) { return; }
+
+	AAIController* GuardController = Cast<AAIController>(GetController());
+	if (GuardController) {
+		GuardController->StopMovement();
+	}
+
 	DrawDebugSphere(GetWorld(), Location, 32.f, 12, FColor::Red, false, 10.f);
 
 	FVector Direction = Location - GetActorLocation();
@@ -84,3 +101,22 @@ void AAIGuard::SetGuardState(EAIState NewState) {
 	OnStateChanged(NewState);
 }
 
+/* DO NOT USE THIS CODE TO INFORM LATER MOVEMENT CODE. This code is exploratory in nature. Instead refer to lecture 31 video code for this project or to the code in Coop Game*/
+void AAIGuard::MoveToNavVertex(AAINavigationVertex* DestinationVertex) {
+	if (!DestinationVertex) { return; }
+
+	AAIController* GuardController = Cast<AAIController>(GetController());
+	if (!GuardController) { return; }
+	GuardController->MoveToActor(DestinationVertex, MoveAcceptanceRadius);
+}
+
+void AAIGuard::ChangeCurrentPatrolPoint(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {
+	AAINavigationVertex* ImpactedVertex = Cast<AAINavigationVertex>(OtherActor);
+	if (!ImpactedVertex) { return; }
+	if (ImpactedVertex == FirstPatrolPoint) {
+		CurrentPatrolPoint = SecondPatrolPoint;
+	}
+	else {
+		CurrentPatrolPoint = FirstPatrolPoint;
+	}
+}

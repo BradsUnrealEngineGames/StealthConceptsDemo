@@ -7,6 +7,7 @@
 #include "AIGuard.generated.h"
 
 class UPawnSensingComponent;
+class AAINavigationVertex;
 
 UENUM(BlueprintType)
 enum class EAIState : uint8
@@ -49,11 +50,29 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Status")
 	void OnStateChanged(EAIState NewState);
 
+	UPROPERTY(EditAnywhere, Category = "Properties")
+	AAINavigationVertex* FirstPatrolPoint = nullptr;
+
+	UPROPERTY(EditAnywhere, Category = "Properties")
+	AAINavigationVertex* SecondPatrolPoint = nullptr;
+
+	AAINavigationVertex* CurrentPatrolPoint = nullptr;
+
+	float MoveAcceptanceRadius = 100;
+
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	UCapsuleComponent* GuardCollisionComponent;
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 private:
 	void ResetOrientation();
+
+	void MoveToNavVertex(AAINavigationVertex* DestinationVertex);
+
+	UFUNCTION()
+	void ChangeCurrentPatrolPoint(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 };
