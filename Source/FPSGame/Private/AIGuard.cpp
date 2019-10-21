@@ -10,6 +10,7 @@
 #include "AINavigationVertex.h"
 #include "AIController.h"
 #include "Components/CapsuleComponent.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 AAIGuard::AAIGuard()
@@ -34,7 +35,6 @@ void AAIGuard::BeginPlay()
 	Super::BeginPlay();
 	OriginalRotation = GetActorRotation();
 	CurrentPatrolPoint = FirstPatrolPoint;
-	GuardCollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &AAIGuard::ChangeCurrentPatrolPoint);
 }
 
 // Called every frame
@@ -60,7 +60,9 @@ void AAIGuard::OnPawnSeen(APawn* SeenPawn) {
 
 	AFPSGameMode* GM = Cast<AFPSGameMode>(GetWorld()->GetAuthGameMode());
 	if (GM) {
-		GM->CompleteMission(SeenPawn, false);
+		if (SeenPawn->InputEnabled()) {
+			GM->CompleteMission(SeenPawn, false);
+		}
 	}
 
 	SetGuardState(EAIState::Alerted);
@@ -92,13 +94,17 @@ void AAIGuard::OnPawnHeard(APawn* HeardPawn, const FVector& Location, float Volu
 	SetGuardState(EAIState::Suspicious);
 }
 
+void AAIGuard::OnRep_GuardState()
+{
+	OnStateChanged(GuardState);
+}
+
 void AAIGuard::SetGuardState(EAIState NewState) {
 	if (GuardState == NewState) {
 		return;
 	}
 	GuardState = NewState;
-
-	OnStateChanged(NewState);
+	OnRep_GuardState();
 }
 
 /* DO NOT USE THIS CODE TO INFORM LATER MOVEMENT CODE. This code is exploratory in nature. Instead refer to lecture 31 video code for this project or to the code in Coop Game*/
@@ -107,16 +113,21 @@ void AAIGuard::MoveToNavVertex(AAINavigationVertex* DestinationVertex) {
 
 	AAIController* GuardController = Cast<AAIController>(GetController());
 	if (!GuardController) { return; }
-	GuardController->MoveToActor(DestinationVertex, MoveAcceptanceRadius);
-}
-
-void AAIGuard::ChangeCurrentPatrolPoint(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) {
-	AAINavigationVertex* ImpactedVertex = Cast<AAINavigationVertex>(OtherActor);
-	if (!ImpactedVertex) { return; }
-	if (ImpactedVertex == FirstPatrolPoint) {
-		CurrentPatrolPoint = SecondPatrolPoint;
+	if (GetDistanceTo(DestinationVertex) < MoveAcceptanceRadius) {
+		if (DestinationVertex == FirstPatrolPoint) {
+			CurrentPatrolPoint = SecondPatrolPoint;
+		}
+		else {
+			CurrentPatrolPoint = FirstPatrolPoint;
+		}
 	}
 	else {
-		CurrentPatrolPoint = FirstPatrolPoint;
+		GuardController->MoveToActor(DestinationVertex, MoveAcceptanceRadius);
 	}
+}
+
+void AAIGuard::GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const {
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AAIGuard, GuardState);
 }

@@ -9,11 +9,6 @@ AAINavigationVertex::AAINavigationVertex()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
-	VisualAidSphere = CreateDefaultSubobject<USphereComponent>(FName("VisualAidSphere"));
-	RootComponent = VisualAidSphere;
-	VisualAidSphere->bHiddenInGame = true;
-	VisualAidSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
 // Called when the game starts or when spawned

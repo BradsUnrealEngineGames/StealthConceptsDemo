@@ -22,6 +22,8 @@ ASCDObjectiveActor::ASCDObjectiveActor()
 	SphereComp->SetCollisionResponseToAllChannels(ECR_Ignore);
 	SphereComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	SphereComp->SetupAttachment(MeshComp);
+
+	SetReplicates(true);
 }
 
 // Called when the game starts or when spawned
@@ -42,11 +44,13 @@ void ASCDObjectiveActor::NotifyActorBeginOverlap(AActor* OtherActor)
 
 	PlayEffects();
 
-	AFPSCharacter* Character = Cast<AFPSCharacter>(OtherActor);
-	if (Character) {
-		Character->bIsCarryingObjective = true;
+	if (Role == ROLE_Authority) {
+		AFPSCharacter* Character = Cast<AFPSCharacter>(OtherActor);
+		if (Character) {
+			Character->bIsCarryingObjective = true;
 
-		Destroy();
+			Destroy();
+		}
 	}
 }
 
